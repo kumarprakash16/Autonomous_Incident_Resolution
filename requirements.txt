@@ -1,7 +1,9 @@
+streamlit>=1.32
+requests>=2.31
+pytest>=8.0
 
-fastapi
-uvicorn
-streamlit
-requests
-chromadb
-langchain
+# Optional for local Qwen serving:
+# vllm
+
+# Optional future vector backend:
+# faiss-cpu
