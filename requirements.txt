@@ -1,9 +1,10 @@
 streamlit>=1.32
 requests>=2.31
 pytest>=8.0
+faiss-cpu>=1.8
+sentence-transformers>=2.7
+torch==2.7.1
+torchvision==0.22.1
 
-# Optional for local Qwen serving:
-# vllm
-
-# Optional future vector backend:
-# faiss-cpu
+# Optional local provider runtime:
+# ollama serve

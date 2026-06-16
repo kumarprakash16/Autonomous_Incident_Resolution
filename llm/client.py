@@ -1,61 +1,48 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 from typing import Any
 
 from config import Settings
+from llm.base import BaseLLM, LLMResponse
+from llm.providers import OfflineLLM, build_llm
 
-try:
-    import requests
-except Exception:  # pragma: no cover - exercised when dependencies are not installed.
-    requests = None
+
+logger = logging.getLogger(__name__)
+JSON_BLOCK = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
 class LLMClient:
-    def __init__(self, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None, provider: BaseLLM | None = None):
         self.settings = settings or Settings.from_env()
+        self.provider = provider or build_llm(self.settings)
+        self.offline_provider = OfflineLLM()
 
-    def complete(self, prompt: str, fallback_text: str) -> tuple[str, str, bool]:
-        if not self.settings.use_vllm:
-            return fallback_text, "offline-deterministic-rca", True
-        if requests is None:
-            return fallback_text, "offline-deterministic-rca", True
-
-        payload: dict[str, Any] = {
-            "model": self.settings.vllm_model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an incident commander. Produce concise, safe RCA output "
-                        "grounded only in the supplied incident and evidence."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-            "max_tokens": 500,
-        }
-
+    def complete(self, prompt: str, fallback_text: str = "", system_prompt: str = "") -> tuple[str, str, bool]:
         try:
-            response = requests.post(
-                self.settings.vllm_base_url,
-                json=payload,
-                timeout=self.settings.request_timeout_seconds,
-            )
-            response.raise_for_status()
-            data = response.json()
-            text = data["choices"][0]["message"]["content"].strip()
-            if text:
-                return text, self.settings.vllm_model, False
-        except Exception:
-            pass
+            response = self.provider.complete(prompt, system_prompt=system_prompt)
+            if response.text:
+                return response.text, response.model, response.offline_fallback
+        except Exception as exc:
+            logger.warning("LLM provider failed; falling back if allowed: %s", exc)
+            if not self.settings.allow_offline_fallback:
+                raise
 
-        return fallback_text, "offline-deterministic-rca", True
+        if fallback_text:
+            return fallback_text, self.offline_provider.model_name, True
+        response = self.offline_provider.complete(prompt, system_prompt=system_prompt)
+        return response.text, response.model, True
 
-    @staticmethod
-    def parse_json_or_text(text: str) -> dict[str, Any]:
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            return {"reasoning": text}
+    def complete_response(self, prompt: str, system_prompt: str = "") -> LLMResponse:
+        text, model, offline = self.complete(prompt, system_prompt=system_prompt)
+        return LLMResponse(text=text, model=model, provider=self.settings.llm_provider, offline_fallback=offline)
+
+
+def parse_json_strict(text: str) -> dict[str, Any]:
+    candidate = text.strip()
+    match = JSON_BLOCK.search(candidate)
+    if match:
+        candidate = match.group(1).strip()
+    return json.loads(candidate)

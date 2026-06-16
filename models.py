@@ -20,7 +20,9 @@ class DetectedIncident:
     severity: str
     environment: str
     severity_score: float
+    symptoms: list[str] = field(default_factory=list)
     signal_keywords: list[str] = field(default_factory=list)
+    raw_keywords: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -31,6 +33,8 @@ class RetrievedDocument:
     path: str
     content: str
     score: float
+    rerank_score: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -46,10 +50,16 @@ class RCAResult:
 @dataclass
 class Recommendation:
     action_summary: str
-    steps: list[str]
+    immediate_mitigation: list[str]
+    long_term_fix: list[str]
+    monitoring_improvements: list[str]
     risk_level: str
     rollback_plan: str
     requires_approval: bool = True
+
+    @property
+    def steps(self) -> list[str]:
+        return self.immediate_mitigation
 
 
 @dataclass
@@ -76,7 +86,9 @@ class WorkflowMetrics:
     recommendation_latency_ms: float = 0.0
     total_workflow_latency_ms: float = 0.0
     similarity_score: float = 0.0
+    rerank_score: float = 0.0
     rca_confidence_score: float = 0.0
+    retrieval_accuracy: float = 0.0
 
 
 @dataclass
@@ -90,6 +102,7 @@ class IncidentResult:
     execution: ExecutionResult
     metrics: WorkflowMetrics
     explanation: list[str]
+    report_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

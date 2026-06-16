@@ -1,74 +1,82 @@
-# AGENTS_026 - Autonomous Incident Diagnosis & Resolution Agent
+# Autonomous Incident Resolution System
 
-Hackathon-ready Streamlit demo using multi-agent orchestration, local RAG retrieval, Qwen/vLLM-compatible LLM calls, safe offline fallback, human approval, execution simulation, explainability, and metrics.
+Production-oriented Streamlit application for autonomous incident diagnosis and safe remediation simulation. The workflow is multi-agent, RAG-backed, human-gated, and provider-configurable.
+
+## Architecture
+
+Incident Submission -> Detection Agent -> Retrieval Agent -> RCA Agent -> Recommendation Agent -> Approval Agent -> Execution Agent -> Final Report
+
+The execution step is simulation only. No real infrastructure changes are performed.
+
+## LLM Providers
+
+Gemini is the default provider.
+
+```bash
+export GEMINI_API_KEY="..."
+export LLM_PROVIDER="gemini"
+export GEMINI_MODEL="gemini-2.5-flash-lite"
+```
+
+Switch to Ollama without code changes:
+
+```bash
+export LLM_PROVIDER="ollama"
+export OLLAMA_MODEL="qwen2.5:7b"
+export OLLAMA_BASE_URL="http://localhost:11434"
+```
+
+If the configured provider is unavailable and `ALLOW_OFFLINE_FALLBACK=true`, the app falls back to deterministic local RCA logic so the demo remains end-to-end runnable.
+
+## RAG
+
+- Embeddings: `BAAI/bge-small-en-v1.5`
+- Vector store: FAISS when `faiss-cpu` and `sentence-transformers` are installed
+- Reranker: `BAAI/bge-reranker-base` cross-encoder when available
+- Fallback: lexical search and lexical reranking for constrained environments
+- Documents: markdown knowledge base under `datasets/` and JSON incidents under `data/incidents/`
+
+Use the Streamlit sidebar button to re-index the knowledge base.
 
 ## Quick Start
 
 ```bash
-
-python -m venv .venv
-.venv\Scripts\activate
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-In a managed AMD/Jupyter environment, you can also run:
+CLI smoke test:
 
 ```bash
-python run_demo.py
+python3 run_demo.py
 ```
 
-## Demo Flow
-
-Synthetic Incident -> Detection Agent -> RAG Retrieval Agent -> RCA Agent -> Recommendation Agent -> Approval Agent -> Execution Simulation Agent -> Explainability + Metrics
-
-## Qwen/vLLM Integration
-
-The project works out of the box in offline demo mode. To connect to a local vLLM OpenAI-compatible endpoint:
+Tests:
 
 ```bash
-$env:USE_VLLM="true"
-$env:VLLM_BASE_URL="http://localhost:8000/v1/chat/completions"
-$env:VLLM_MODEL="Qwen/Qwen2.5-7B-Instruct"
-streamlit run app.py
+python3 -m pytest -q
 ```
 
-If the endpoint is unavailable, the app automatically falls back to a deterministic local RCA generator.
+## Metrics
+
+Each workflow records latency, similarity, rerank score, retrieval accuracy, RCA confidence, and execution status. Runtime metrics are appended to `data/metrics/workflow_metrics.jsonl`.
 
 ## Project Structure
 
 ```text
-AGENTS_026_project/
-├── app.py
-├── run_demo.py
-├── config.py
-├── models.py
-├── requirements.txt
-├── notebook.ipynb
-├── agents/
-├── rag/
-├── llm/
-├── datasets/
-├── evaluation/
-├── assets/
-├── tests/
-└── ui/
+agents/
+rag/
+llm/
+data/
+datasets/
+evaluation/
+tests/
+ui/
 ```
 
-## Metrics Shown
-
-- Detection latency
-- Retrieval latency
-- RCA generation latency
-- Total workflow latency
-- Similarity score
-- RCA confidence score
-- Simulated resolution status
-
-## Testing
-
-```bash
-pytest
-python run_demo.py
-```
-
+P0 → Entire system down
+P1 → Major customer impact
+P2 → Partial degradation
+P3 → Minor issue

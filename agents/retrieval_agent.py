@@ -16,8 +16,9 @@ def retrieve_evidence(
     query = "\n".join(
         [
             detected.normalized_summary,
+            "symptoms: " + ", ".join(detected.symptoms),
             "signals: " + ", ".join(detected.signal_keywords),
             incident.logs,
         ]
     )
-    return retriever.retrieve(query, top_k=settings.top_k)
+    return retriever.retrieve(query, top_k=settings.top_k, candidate_k=settings.candidate_k)

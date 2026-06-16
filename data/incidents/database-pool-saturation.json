@@ -1,0 +1,14 @@
+{
+  "id": "INC-2026-002",
+  "title": "Database pool saturation causing API timeouts",
+  "service": "order-service",
+  "severity": "P2",
+  "symptoms": [
+    "connection pool exhausted",
+    "database wait time high",
+    "request timeout"
+  ],
+  "root_cause": "Application worker concurrency exceeded database connection capacity during a traffic spike.",
+  "resolution": "Reduce worker concurrency, recycle connection pools, inspect slow queries, and restore limits after pool utilization normalizes.",
+  "logs": "WARN order-service db connection pool exhausted\nERROR timeout waiting for database connection"
+}

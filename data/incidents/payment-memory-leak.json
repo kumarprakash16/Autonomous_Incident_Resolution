@@ -1,0 +1,15 @@
+{
+  "id": "INC-2026-001",
+  "title": "Payment service heap exhaustion during checkout spike",
+  "service": "payment-service",
+  "severity": "P1",
+  "symptoms": [
+    "OutOfMemoryError",
+    "heap usage above 95%",
+    "checkout retry storm",
+    "p95 latency above 4s"
+  ],
+  "root_cause": "A memory leak in checkout enrichment exhausted payment-service heap and triggered gateway retries.",
+  "resolution": "Drain affected pods, restart saturated replicas, temporarily increase heap headroom, then deploy the fixed enrichment component.",
+  "logs": "ERROR payment-service OutOfMemoryError heap exhausted\nWARN gateway retry storm detected\nERROR db connection pool exhausted"
+}
